@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import pickle
@@ -62,6 +61,43 @@ try:
 except FileNotFoundError as e:
 
     st.error(f"Required file not found: {e.filename}")
+    st.stop()
+
+
+# --------------------------------------------------
+# 2A. LOAD CLUSTERING MODEL
+# --------------------------------------------------
+
+@st.cache_resource
+def load_clustering_model():
+
+    with open("kmeans_model.pkl", "rb") as file:
+        clustering_model = pickle.load(file)
+
+    with open("kmeans_scaler.pkl", "rb") as file:
+        clustering_scaler = pickle.load(file)
+
+    with open("clustering_features.pkl", "rb") as file:
+        clustering_features = pickle.load(file)
+
+    return (
+        clustering_model,
+        clustering_scaler,
+        clustering_features
+    )
+
+
+try:
+
+    (
+        clustering_model,
+        clustering_scaler,
+        clustering_features
+    ) = load_clustering_model()
+
+except FileNotFoundError as e:
+
+    st.error(f"Clustering file not found: {e.filename}")
     st.stop()
 
 
@@ -137,12 +173,13 @@ st.write(
 
 
 # --------------------------------------------------
-# 6. CREATE TWO TABS
+# 6. CREATE THREE TABS
 # --------------------------------------------------
 
-tab1, tab2 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "Regression - Diameter Prediction",
-    "Classification - PHA Prediction"
+    "Classification - PHA Prediction",
+    "Clustering - Asteroid Grouping"
 ])
 
 
@@ -353,6 +390,52 @@ with tab2:
             st.error(f"Classification Error: {e}")
 
 
+# ==================================================
+# TAB 3: CLUSTERING
+# ==================================================
+
+with tab3:
+
+    st.header("Asteroid Clustering")
+
+    st.write(
+        "Enter the asteroid orbital features to identify "
+        "which cluster the asteroid belongs to."
+    )
+
+    clustering_input = get_input_data(
+        clustering_features,
+        section="clustering"
+    )
+
+    if st.button("Predict Cluster", key="cluster_predict"):
+
+        try:
+
+            # Scale the input features
+            scaled_input = clustering_scaler.transform(
+                clustering_input
+            )
+
+            # Predict cluster
+            cluster_prediction = clustering_model.predict(
+                scaled_input
+            )
+
+            cluster_number = int(cluster_prediction[0])
+
+            st.success("Clustering Completed!")
+
+            st.metric(
+                label="Predicted Cluster",
+                value=f"Cluster {cluster_number}"
+            )
+
+        except Exception as e:
+
+            st.error(f"Clustering Error: {e}")
+
+
 # --------------------------------------------------
 # 7. FOOTER
 # --------------------------------------------------
@@ -363,4 +446,3 @@ st.caption(
     "Asteroid Prediction System | Random Forest "
     "Regression and Classification | SHAP Explainability"
 )
-
